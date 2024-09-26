@@ -1,23 +1,47 @@
 const fs = require("fs");
+const csv = require("csv-parser");
+const orders = [];
 
-fs.readFile("./orders.csv", "utf8", (err, data) => {
-  if (err) {
-    console.error("error reading the file", err);
-    return;
-  }
-  const rows = data.split("\n");
+const readCSV = (filePath) => {
+  return new Promise((resolve, reject) => {
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on("data", (data) => orders.push(data))
+      .on("end", () => {
+        resolve(orders);
+      })
+      .on("error", (error) => {
+        reject(error);
+      });
+  });
+};
 
-  const headers = rows[0].split(",").map((header) => header.trim());
-  const orders = rows
-    .slice(1)
-    .map((row) => {
-      const values = row.split(",").map((values) => values.trim());
-      return headers.reduce((acc, header, index) => {
-        acc[header] = values[index] !== undefined ? values[index] : null;
-        return acc;
-      }, {});
-    })
-    .filter((row) => row !== null);
+const totalExpenditurePerCustomer = () => {
+  const expenditure = {};
 
-  console.log(orders);
+  orders.forEach((order) => {
+    const totalSpent = order.quantity * order.price_per_unit;
+    if (expenditure[order.customer_id]) {
+      expenditure[order.customer_id] += totalSpent;
+    } else {
+      expenditure[order.customer_id] = totalSpent;
+    }
+  });
+
+  const customerSpending = Object.keys(expenditure).map((customer_id) => ({
+    customer_id,
+    total_spent: expenditure[customer_id],
+  }));
+
+  customerSpending.sort((a, b) => b.total_spent - a.total_spent);
+  console.table(customerSpending);
+
+  console.log("Top 5 Customers who spent the most:");
+  console.table(customerSpending.slice(0, 5));
+
+  return customerSpending;
+};
+
+readCSV("orders.csv").then(() => {
+  totalExpenditurePerCustomer();
 });
