@@ -42,6 +42,29 @@ const totalExpenditurePerCustomer = () => {
   return customerSpending;
 };
 
+const findTopCustomers = () => {
+  const customerPurchaseCounts = {};
+
+  orders.forEach((order) => {
+    const customerId = order.customer_id;
+    if (customerId === "INVALID_ID") {
+      return;
+    }
+    const quantity = parseInt(order.quantity);
+    customerPurchaseCounts[customerId] =
+      (customerPurchaseCounts[customerId] || 0) + quantity;
+  });
+
+  const maxPurchases = Math.max(...Object.values(customerPurchaseCounts));
+  const topCustomers = Object.keys(customerPurchaseCounts).filter(
+    (customerId) => customerPurchaseCounts[customerId] === maxPurchases
+  );
+
+  console.log(`Customers with the highest total purchases of ${maxPurchases}:`);
+  topCustomers.forEach((customer) => console.log(customer));
+};
+
 readCSV("orders.csv").then(() => {
   totalExpenditurePerCustomer();
+  findTopCustomers();
 });
