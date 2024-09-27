@@ -44,24 +44,48 @@ const totalExpenditurePerCustomer = () => {
 
 const findTopCustomers = () => {
   const customerPurchaseCounts = {};
+  const productSales = {};
 
   orders.forEach((order) => {
     const customerId = order.customer_id;
+    const productId = order.product_id;
+    const quantity = parseInt(order.quantity);
+
     if (customerId === "INVALID_ID") {
       return;
     }
-    const quantity = parseInt(order.quantity);
+
+    // Update customer purchase counts
     customerPurchaseCounts[customerId] =
       (customerPurchaseCounts[customerId] || 0) + quantity;
+
+    // Update product sales
+    productSales[productId] = (productSales[productId] || 0) + quantity;
   });
 
+  // Find top customers
   const maxPurchases = Math.max(...Object.values(customerPurchaseCounts));
   const topCustomers = Object.keys(customerPurchaseCounts).filter(
     (customerId) => customerPurchaseCounts[customerId] === maxPurchases
   );
 
-  console.log(`Customers with the highest total purchases of ${maxPurchases}:`);
-  topCustomers.forEach((customer) => console.log(customer));
+  // Find most popular product
+  const bestSellingProduct = Object.keys(productSales).reduce((a, b) =>
+    productSales[a] > productSales[b] ? a : b
+  );
+  const totalUnitsSold = productSales[bestSellingProduct];
+  const customersWithHighestTotalPurchases = topCustomers.map(
+    (customer_id) => ({
+      customer_id,
+    })
+  );
+
+  console.log(`Customers with the highest total purchases (${maxPurchases}):`);
+  console.table(customersWithHighestTotalPurchases);
+
+  console.log(`\nMost popular product:`);
+  console.log(`Product ID: ${bestSellingProduct}`);
+  console.log(`Total units sold: ${totalUnitsSold}`);
 };
 
 readCSV("orders.csv").then(() => {
