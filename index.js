@@ -82,13 +82,72 @@ const findTopCustomers = () => {
 
   console.log(`Customers with the highest total purchases (${maxPurchases}):`);
   console.table(customersWithHighestTotalPurchases);
-
   console.log(`\nMost popular product:`);
   console.log(`Product ID: ${bestSellingProduct}`);
   console.log(`Total units sold: ${totalUnitsSold}`);
 };
 
+const calculateMonthlyRevenue = () => {
+  const monthlyRevenue = {};
+  const customerLastOrders = {};
+
+  const latestOrderDate = orders.reduce((latest, order) => {
+    const orderDate = new Date(order.order_date);
+    return orderDate > latest ? orderDate : latest;
+  }, new Date(0));
+  console.log(latestOrderDate);
+  // Calculate the cutoff date for inactive customers (6 months ago)
+  const inactiveCutoffDate = new Date(
+    latestOrderDate.setMonth(latestOrderDate.getMonth() - 6)
+  );
+  console.log(inactiveCutoffDate);
+
+  orders.forEach((order) => {
+    const orderDate = new Date(order.order_date);
+    if (isNaN(orderDate.getTime())) {
+      return;
+    }
+    const yearMonth = `${orderDate.getFullYear()}-${String(
+      orderDate.getMonth() + 1
+    ).padStart(2, "0")}`;
+    const revenue = parseFloat(order.price_per_unit) * parseInt(order.quantity);
+    if (!Number(revenue)) {
+      return;
+    }
+
+    monthlyRevenue[yearMonth] = (monthlyRevenue[yearMonth] || 0) + revenue;
+    const customerId = order.customer_id;
+    if (
+      !customerLastOrders[customerId] ||
+      orderDate > customerLastOrders[customerId]
+    ) {
+      customerLastOrders[customerId] = orderDate;
+    }
+  });
+  const inactiveCustomers = Object.keys(customerLastOrders).filter(
+    (customerId) => customerLastOrders[customerId] < inactiveCutoffDate
+  );
+
+  const revenueResult = Object.keys(monthlyRevenue).map((yearMonth) => ({
+    yearMonth,
+    revenue: monthlyRevenue[yearMonth],
+  }));
+
+  console.log("\nthe revenue for each month is:");
+  console.table(revenueResult);
+
+  console.log("\nInactive customers (no orders in the last 6 months):");
+  const customersWithNoOrders = inactiveCustomers.map((customer_id) => ({
+    customer_id,
+    last_order_date: customerLastOrders[customer_id]
+      .toISOString()
+      .split("T")[0],
+  }));
+  console.table(customersWithNoOrders);
+};
+
 readCSV("orders.csv").then(() => {
   totalExpenditurePerCustomer();
   findTopCustomers();
+  calculateMonthlyRevenue();
 });
