@@ -146,8 +146,61 @@ const calculateMonthlyRevenue = () => {
   console.table(customersWithNoOrders);
 };
 
+const filterOrders = ({
+  start_date = null,
+  end_date = null,
+  min_spent = null,
+  product_id = null,
+}) => {
+  let filteredOrders = orders.filter((order) => {
+    const orderDate = new Date(order.order_date);
+
+    // Check if order_date is a valid date
+    if (isNaN(orderDate.getTime())) {
+      return false;
+    }
+
+    // Filter by start_date
+    if (start_date && orderDate < new Date(start_date)) return false;
+
+    // Filter by end_date
+    if (end_date && orderDate > new Date(end_date)) return false;
+
+    // Filter by product_id
+    if (product_id && order.product_id !== product_id) return false;
+
+    return true;
+  });
+
+  // Filter by min_spent (across all customer orders)
+  if (min_spent) {
+    const customerSpent = {};
+    filteredOrders.forEach((order) => {
+      const customerId = order.customer_id;
+      customerSpent[customerId] =
+        (customerSpent[customerId] || 0) +
+        parseFloat(order.price_per_unit) * parseInt(order.quantity);
+    });
+
+    filteredOrders = filteredOrders.filter(
+      (order) => customerSpent[order.customer_id] >= min_spent
+    );
+  }
+
+  console.log("Filtered Orders:");
+  console.log(filteredOrders);
+
+  return filteredOrders;
+};
+
 readCSV("orders.csv").then(() => {
   totalExpenditurePerCustomer();
   findTopCustomers();
   calculateMonthlyRevenue();
+  filterOrders({
+    start_date: "2022-01-01",
+    end_date: "2024-12-31",
+    min_spent: 10,
+    product_id: "226057c4-4841-42ac-978b-6dbbb9678c31",
+  });
 });
